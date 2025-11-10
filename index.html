@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<title>Extractor 5</title>
+
+<textarea id=trn_ta cols=80 rows=24 placeholder="Paste STN transcript here"></textarea>
+<textarea id=patents_ta cols=18 rows=24 placeholder="Patents"></textarea>
+<textarea id=medline_ta cols=18 rows=24 placeholder="Medline"></textarea>
+<textarea id=embase_ta cols=18 rows=24 placeholder="Embase (SUBSET!)"></textarea>
+<textarea id=wpids_ta cols=18 rows=24 placeholder="WPIDS"></textarea>
+
+<script>
+"use strict";
+
+
+function extract_patents(string) {
+    const CAplus_PI_field = /^(?:PI|PIA|PN|PPPI|PSPI)? *([A-Z][A-Z]) *(\d+) *([A-Z]\d?)\b/gmu;
+        // Requires kind code, so that priority docs are ignored
+        // Also extracts WPIDS patents (PIA field)
+
+    const Registry_CN_field = /PN: *([A-Z][A-Z]) *(\d+) *([A-Z]\d?)?\b/gu;
+    const Registry_PNTE_field = /\| *([A-Z][A-Z]) *(\d+) *([A-Z]\d?)?\b/gu;
+
+    const a = [...string.matchAll(CAplus_PI_field)].map(format);
+    const b = [...string.matchAll(Registry_CN_field)].map(format);
+    const c = [...string.matchAll(Registry_PNTE_field)].map(format);
+
+    return [...new Set([...a, ...b, ...c])].sort();                                // Remove duplicates & sort (for human readability)
+}
+
+
+function extract_medline(string) {
+    const regex = /PubMed ID: (\d+)/g;
+    return [...string.matchAll(regex)].map(e => "NLM" + e[1]);
+}
+
+
+function extract_embase_pmid(string) {
+    const regex = /PMID: (\d+)/g;
+    return [...string.matchAll(regex)].map(e => "NLM" + e[1]);
+}
+
+
+function extract_wpids(string) {
+    const regex = /^AN *([A-Z\d]+\-[A-Z\d]+).*?WPIDS/gm;
+    return [...string.matchAll(regex)].map(e => '"' + e[1] + '"').sort();
+}
+
+
+const trn_ta = document.getElementById("trn_ta");
+const patents_ta = document.getElementById("patents_ta");
+const medline_ta = document.getElementById("medline_ta");
+const embase_ta = document.getElementById("embase_ta");
+const wpids_ta = document.getElementById("wpids_ta");
+
+
+trn_ta.addEventListener("input", function () {
+    const str = trn_ta.value;
+    patents_ta.value = "(\n" + extract_patents(str).join(",\n") + "\n)/pn";
+    medline_ta.value = "(\n" + extract_medline(str).join(",\n") + "\n)/an@npl";
+    embase_ta.value = "(\n" + extract_embase_pmid(str).join(",\n") + "\n)/an@npl";
+    wpids_ta.value = "(\n" + extract_wpids(str).join(",\n") + "\n)/an@wpi";
+});
+
+
+function US(cc, num, kind) {
+    if (kind !== undefined && kind[0] === "A" && num.length === 11) {
+        return cc + num.slice(0, 4) + num.slice(-6);         // US YYYY 0 NNNNNN A1 ; Remove the zero
+    }
+
+    return cc + num + (kind ?? "");
+}
+
+
+function KR(cc, num, kind) {
+    if (kind !== undefined && kind[0] === "A") {
+        return cc + num.slice(0, 4) + "0" + num.slice(4);    // KR YYYY _ NNNNNN A ; Add "leading" zero
+    }
+
+    return cc + num + (kind ?? "");
+}
+
+
+function JP(cc, num, kind) {
+    if (kind !== undefined && kind[0] === "A") {
+        if (num.length === 10) {                             // Applications post 2000 ; JP YYYY NNNNNN A
+            return cc + num + kind;
+        }
+
+        return cc + "[S,H,]" + num + kind;                   // Older JP applications using year of emperor
+    }
+
+    return cc + num;                                         // JP YYYY NNNNNN T ; JP NNNNNNN B2
+}
+
+
+function ZA(cc, num, kind) {
+    const re = /(\d\d\d\d)0(\d+)/;
+    const match = re.exec(num);
+
+    if (match === null) {
+        return cc + num;
+    }
+
+    return cc + match[1] + match[2];
+}
+ 
+
+const formatters = { JP, KR, US, ZA };
+
+
+function format(match) {
+    const [all, cc, num, kind] = match;
+
+    if (formatters[cc] !== undefined) {
+        return formatters[cc](cc, num, kind);
+    }
+
+    return cc + num;
+}
+
+
+</script>
