@@ -92,7 +92,19 @@ function JP(cc, num, kind) {
     return cc + num;                                         // JP YYYY NNNNNN T ; JP NNNNNNN B2
 }
 
+    
+function WO(cc, num, kind) {
+    const re = /(\d\d)(\d\d)0(\d+)/;
+    const match = re.exec(num);
 
+    if (match === null) {
+        return cc + num;
+    }
+
+    return cc + "[" + match[1] + ",]" + match[2] + "[0,]" + match[3];
+}
+
+    
 function ZA(cc, num, kind) {
     const re = /(\d\d\d\d)0(\d+)/;
     const match = re.exec(num);
@@ -105,7 +117,7 @@ function ZA(cc, num, kind) {
 }
  
 
-const formatters = { JP, KR, US, ZA };
+const formatters = { JP, KR, US, WO, ZA };
 
 
 function format(match) {
