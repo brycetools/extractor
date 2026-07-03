@@ -1,140 +1,336 @@
 <!DOCTYPE html>
-<html><head>
-<meta http-equiv="content-type" content="text/html; charset=UTF-8"><title>Extractor 5</title>
+<title>extractor</title>
 
-</head><body><textarea id="trn_ta" cols="80" rows="24" placeholder="Paste STN transcript here"></textarea>
-<textarea id="patents_ta" cols="20" rows="24" placeholder="Patents"></textarea>
-<textarea id="medline_ta" cols="18" rows="24" placeholder="Medline"></textarea>
-<textarea id="embase_ta" cols="18" rows="24" placeholder="Embase (SUBSET!)"></textarea>
-<textarea id="wpids_ta" cols="18" rows="24" placeholder="WPIDS"></textarea>
-<br><br>
-© 2026 Andrew Bryce. All rights reserved.
+<style>
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    font: 1rem monospace;
+}
+
+body {
+    height: 100vh;
+    display: flex;
+}
+
+search {
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border-right: 1px solid lightgrey;
+    overflow: auto;
+}
+
+main {
+    flex: 1;
+    border-left: 1px solid lightgrey;
+    padding: 4px;
+    display: grid;
+    overflow: auto;
+}
+
+pre, textarea {
+    grid-area: 1 / 1;
+    border: 0;
+    padding: 4px;
+    background: transparent;
+    font: 1rem monospace;
+    overflow: clip;
+    text-wrap: wrap;
+}
+
+pre {
+    color: transparent;
+}
+
+textarea {
+    resize: none;
+    color: transparent;
+    caret-color: black;
+}
+
+#mirror {
+    color: black;
+}
+
+p {
+    max-width: 20rem;
+}
+</style>
+
+<search>
+<div>
+<input type=checkbox id=patents-chk>
+<label>patents</label>
+<button id=patents-btn>copy patents to clipboard</button>
+</div>
+
+<div>
+<input type=checkbox id=medline-chk>
+<label>medline</label>
+<button id=medline-btn>copy medline to clipboard</button>
+</div>
+
+<div style=flex:1></div>
+
+<p>
+Paste STN transcript into the box.
+
+<p>
+Press the button to copy patent numbers or medline accession numbers to the clipboard. These can be directly pasted into Abs.
+
+<p>
+Extracting patents should get patent numbers from WPIDS answers, so there is no need to extact WPIDS accession numbers separately. Hence, no button for that.
+
+<p>
+You don't need to use the checkboxes for anything, they are just there to highlight what parts of the transcript were extracted, for your own amusement.
+
+<p>
+Works for AU, CN, EP, JP, KR, US and WO patents. Everything else is just a best guess. We take all care but no responsibility.
+
+<div style=flex:1></div>
+
+<a href="https://brycetools.github.io/extractor/old.html">Old Extractor</a>
+
+<div style=flex:1></div>
+
+<p>
+&copy; 2026 Andrew Bryce. All rights reserved.
+
+</search>
+
+<main>
+<pre id=mirror></pre>
+<pre id=patents-pre></pre>
+<pre id=medline-pre></pre>
+<textarea id=source autofocus placeholder="Paste STN transcript here"></textarea>
+</main>
+
+
+
 <script>
 "use strict";
 
 
-function extract_patents(string) {
-    const CAplus_PI_field = /^(?:PI|PIA|PN|PPPI|PSPI)? *([A-Z][A-Z]) *(\d+) *([A-Z]\d?)\b/gmu;
-        // Requires kind code, so that priority docs are ignored
-        // Also extracts WPIDS patents (PIA field)
 
-    const Registry_CN_field = /PN: *([A-Z][A-Z]) *(\d+) *([A-Z]\d?)?\b/gu;
-    const Registry_PNTE_field = /\| *([A-Z][A-Z]) *(\d+) *([A-Z]\d?)?\b/gu;
+const source = document.getElementById("source");
+const mirror = document.getElementById("mirror");
 
-    const a = [...string.matchAll(CAplus_PI_field)].map(format);
-    const b = [...string.matchAll(Registry_CN_field)].map(format);
-    const c = [...string.matchAll(Registry_PNTE_field)].map(format);
 
-    return [...new Set([...a, ...b, ...c])].sort();                                // Remove duplicates & sort (for human readability)
+
+source.addEventListener("input", () => mirror.innerHTML = escape(source.value) + "\n");
+
+
+
+function escape(html) {
+    return html.replaceAll("&", "&amp;").replaceAll("<", "&lt;");
 }
 
 
-function extract_medline(string) {
-    const regex = /PubMed ID: (\d+)/g;
-    return [...string.matchAll(regex)].map(e => "NLM" + e[1]);
-}
+
+const medline_chk = document.getElementById("medline-chk");
+const medline_btn = document.getElementById("medline-btn");
+const medline_pre = document.getElementById("medline-pre");
 
 
-function extract_embase_pmid(string) {
-    const regex = /PMID: (\d+)/g;
-    return [...string.matchAll(regex)].map(e => "NLM" + e[1]);
-}
 
+medline_chk.addEventListener("change", () => {
+    medline_pre.innerHTML = "";
 
-function extract_wpids(string) {
-    const regex = /^AN *([A-Z\d]+\-[A-Z\d]+).*?WPIDS/gm;
-    return [...string.matchAll(regex)].map(e => '"' + e[1] + '"').sort();
-}
-
-
-const trn_ta = document.getElementById("trn_ta");
-const patents_ta = document.getElementById("patents_ta");
-const medline_ta = document.getElementById("medline_ta");
-const embase_ta = document.getElementById("embase_ta");
-const wpids_ta = document.getElementById("wpids_ta");
-
-
-trn_ta.addEventListener("input", function () {
-    const str = trn_ta.value;
-    patents_ta.value = "(\n" + extract_patents(str).join(",\n") + "\n)/pn";
-    medline_ta.value = "(\n" + extract_medline(str).join(",\n") + "\n)/an@npl";
-    embase_ta.value = "(\n" + extract_embase_pmid(str).join(",\n") + "\n)/an@npl";
-    wpids_ta.value = "(\n" + extract_wpids(str).join(",\n") + "\n)/an@wpi";
+    if (medline_chk.checked) {
+        medline_pre.innerHTML =  markup_medline(escape(source.value));
+    }
 });
 
 
-function US(cc, num, kind) {
-    if (kind !== undefined && kind[0] === "A" && num.length === 11) {
-        return cc + num.slice(0, 4) + num.slice(-6);         // US YYYY 0 NNNNNN A1 ; Remove the zero
-    }
 
-    return cc + num + (kind ?? "");
+medline_btn.addEventListener("click", () => {
+    const a = extract_medline(escape(source.value));
+    const b = [...new Set(a)];
+    const c = b.sort();
+    navigator.clipboard.writeText(`(${c.join(",")})/an`);
+});
+
+
+
+source.addEventListener("input", () => {
+    medline_pre.innerHTML = "";
+
+    if (medline_chk.checked) {
+        medline_pre.innerHTML =  markup_medline(escape(source.value));
+    }
+});
+
+
+
+function markup_medline(input) {
+    const regex = /(?:PubMed ID|PMID): (\d+)/g;
+    return input.replaceAll(regex, m => `<mark>${m}</mark>`);
 }
 
 
-function KR(cc, num, kind) {
-    if (kind !== undefined && kind[0] === "A") {
-        return cc + num.slice(0, 4) + "0" + num.slice(4);    // KR YYYY _ NNNNNN A ; Add "leading" zero
-    }
 
-    return cc + num + (kind ?? "");
+function extract_medline(input) {
+    const regex = /(?:PubMed ID|PMID): (\d+)/g;
+    return [...input.matchAll(regex)].map(m => "NLM" + m[1]);
 }
 
 
-function JP(cc, num, kind) {
-    if (kind !== undefined && kind[0] === "A") {
-        if (num.length === 10) {                             // Applications post 2000 ; JP YYYY NNNNNN A
-            return cc + num + kind;
+
+const patents_chk = document.getElementById("patents-chk");
+const patents_btn = document.getElementById("patents-btn");
+const patents_pre = document.getElementById("patents-pre");
+
+
+
+const regex = /\b(?<!-)(AR|AT|AU|BR|CA|CN|DE|EP|ES|FI|FR|GB|HK|IL|IN|JP|KR|MX|NZ|PH|RU|SG|TH|TW|US|WO|ZA) *(\d{6,})(?: *([A-Z])(\d*))?\b/gsu
+
+
+
+patents_chk.addEventListener("change", () => {
+    patents_pre.innerHTML = "";
+
+    if (patents_chk.checked) {
+        patents_pre.innerHTML =  markup_patents(escape(source.value), regex);
+    }
+});
+
+
+
+patents_btn.addEventListener("click", () => {
+    const a = extract_patents(escape(source.value), regex);
+    const b = [...new Set(a)];
+    const c = b.sort();
+    navigator.clipboard.writeText(`(${c.join(",")})/pn`);
+});
+
+
+
+source.addEventListener("input", () => {
+    patents_pre.innerHTML = "";
+
+    if (patents_chk.checked) {
+        patents_pre.innerHTML =  markup_patents(escape(source.value), regex);
+    }
+});
+
+
+
+function markup_patents(input, regex) {
+    return input.replaceAll(regex, m => `<mark>${m}</mark>`);
+}
+
+
+
+function extract_patents(input, regex) {
+    return [...input.matchAll(regex)].map(m => format(m[1] ,m[2], m[3], m[4]));
+}
+
+
+
+function format(cc, num, kind, level) {
+    return (
+        cc === "WO" ? WO(cc, num, kind, level) :
+        cc === "US" ? US(cc, num, kind, level) :
+        cc === "JP" ? JP(cc, num, kind, level) :
+        cc === "KR" ? KR(cc, num, kind, level) :
+        cc === "AU" ? AU(cc, num, kind, level) :
+        cc === "ZA" ? ZA(cc, num, kind, level) :
+        cc + num
+    );
+}
+
+
+
+function WO(cc, num, kind, level) {
+    if (num.length === 10) {
+        if (Number(num) < 2002051235) {
+            return cc + num.slice(2, 4) + num.slice(-5);
         }
 
-        return cc + "[S,H,]" + num + kind;                   // Older JP applications using year of emperor
-    }
-
-    return cc + num;                                         // JP YYYY NNNNNN T ; JP NNNNNNN B2
-}
-
-    
-function WO(cc, num, kind) {
-    if (num.length === 10) {
-        return cc + num;
-    }
-
-    const re = /(\d\d)(\d\d)0(\d+)/;
-    const match = re.exec(num);
-
-    if (match === null) {
-        return cc + num;
-    }
-
-    return cc + "[" + match[1] + ",]" + match[2] + "[0,]" + match[3];
-}
-
-    
-function ZA(cc, num, kind) {
-    const re = /(\d\d\d\d)0(\d+)/;
-    const match = re.exec(num);
-
-    if (match === null) {
-        return cc + num;
-    }
-
-    return cc + match[1] + match[2];
-}
- 
-
-const formatters = { JP, KR, US, WO, ZA };
-
-
-function format(match) {
-    const [all, cc, num, kind] = match;
-
-    if (formatters[cc] !== undefined) {
-        return formatters[cc](cc, num, kind);
+        if (Number(num) < 2004000001) {
+            return cc + num.slice(2, 4) + num.slice(-6);
+        }
     }
 
     return cc + num;
 }
 
 
+
+function US(cc, num, kind, level) {
+    if (num.length === 11) {
+        return cc + num.slice(0, 4) + num.slice(-6);
+    }
+
+    if (num.length === 8 && num.startsWith("0")) {
+        return cc + num.slice(-7);
+    }
+
+    return cc + num;
+}
+
+
+
+function JP(cc, num, kind, level) {
+    if (num.length === 8) {
+        const year = num.slice(0,2);
+        const n = Number(num.slice(2));
+        const era = (Number(num) < 12000000 ? "H" : "S");
+        const k = (kind === undefined || kind === "T" ? "" : kind);
+        return cc + era + year + n + k;
+    }
+
+    return cc + num;
+}
+
+
+
+function AU(cc, num, kind, level) {
+    if (num.length === 10) {
+        if (num.startsWith("20000") || num.startsWith("20010")|| num.startsWith("20020")) {
+            const year = num.slice(2, 4);
+            const n = num.slice(5);
+            return "AU" + n + year;
+        }
+    }
+
+    if (num.length === 7) {
+        const year = num.slice(0,2);
+        const n = num.slice(2);
+        return cc + n + year;
+    }
+
+    return cc + num;
+}
+
+
+
+function KR(cc, num, kind, level) {
+    if (num.length === 10) {
+        const year = num.slice(0,4);
+        const n = num.slice(4);
+        return cc + year + "0" + n;
+    }
+    return cc + num;
+}
+
+
+
+function ZA(cc, num, kind, level) {
+    if (num.length === 10) {
+        const year = num.slice(0,4);
+        const n = num.slice(5);
+        return cc + year + n;
+    }
+
+    if (num.length === 7) {
+        const year = num.slice(0,2);
+        const n = num.slice(3);
+        return cc + year + Number(n);
+    }
+    return cc + num;
+}
+
 </script>
-</body></html>
