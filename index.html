@@ -81,13 +81,16 @@ Paste STN transcript into the box.
 Press the button to copy patent numbers or medline accession numbers to the clipboard. These can be directly pasted into Abs.
 
 <p>
-Extracting patents should get patent numbers from WPIDS answers, so there is no need to extact WPIDS accession numbers separately. Hence, no button for that.
+Extracting patents should get patent numbers from WPIDS answers, so there is no need to extact WPIDS accession numbers separately.
+But if you really want WPIDS accession numbers, use <button id=derwent-btn>this button</button>.
 
 <p>
 You don't need to use the checkboxes for anything, they are just there to highlight what parts of the transcript were extracted, for your own amusement.
 
 <p>
-Works for AU, CN, EP, JP, KR, US and WO patents. Everything else is just a best guess. We take all care but no responsibility.
+Works for AU, CN, EP, JP, KR, US and WO patents.
+Everything else is just a best guess.
+We take all care but no responsibility.
 
 <div style=flex:1></div>
 
@@ -96,7 +99,8 @@ Works for AU, CN, EP, JP, KR, US and WO patents. Everything else is just a best 
 <div style=flex:1></div>
 
 <p>
-&copy; 2026 Andrew Bryce. All rights reserved.
+&copy; 2026 Andrew Bryce.
+All rights reserved.
 
 </search>
 
@@ -126,6 +130,14 @@ source.addEventListener("input", () => mirror.innerHTML = escape(source.value) +
 function escape(html) {
     return html.replaceAll("&", "&amp;").replaceAll("<", "&lt;");
 }
+
+
+document.getElementById("derwent-btn").addEventListener("click", () => {
+    const regex = /^AN *([A-Z\d]+\-[A-Z\d]+).*?WPIDS/gm;
+    const string = escape(source.value);
+    const c = [...string.matchAll(regex)].map(e => '"' + e[1] + '"').sort();
+    navigator.clipboard.writeText("(" + c.join(",") + ")/an@wpi");
+};
 
 
 
