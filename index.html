@@ -137,7 +137,7 @@ document.getElementById("derwent-btn").addEventListener("click", () => {
     const string = escape(source.value);
     const c = [...string.matchAll(regex)].map(e => '"' + e[1] + '"').sort();
     navigator.clipboard.writeText("(" + c.join(",") + ")/an@wpi");
-};
+});
 
 
 
